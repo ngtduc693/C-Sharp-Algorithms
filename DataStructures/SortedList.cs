@@ -1,4 +1,3 @@
-using System.Collections;
 
 namespace DataStructures;
 
@@ -9,56 +8,15 @@ namespace DataStructures;
 public class SortedList<T> : IEnumerable<T>
 {
     private readonly IComparer<T> comparer;
-    private readonly List<T> memory;
+    private readonly List<T> memory = new();
 
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="SortedList{T}" /> class. Uses a Comparer.Default for type T.
-    /// </summary>
-    public SortedList()
-        : this(Comparer<T>.Default)
-    {
-    }
+    public SortedList() : this(Comparer<T>.Default) { }
+    public SortedList(IComparer<T> comparer) => this.comparer = comparer;
 
-    /// <summary>
-    ///     Gets the number of elements containing in <see cref="SortedList{T}" />.
-    /// </summary>
     public int Count => memory.Count;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="SortedList{T}" /> class.
-    /// </summary>
-    /// <param name="comparer">Comparer user for binary search.</param>
-    public SortedList(IComparer<T> comparer)
-    {
-        memory = new List<T>();
-        this.comparer = comparer;
-    }
-
-    /// <summary>
-    ///     Adds new item to <see cref="SortedList{T}" /> instance, maintaining the order.
-    /// </summary>
-    /// <param name="item">An element to insert.</param>
-    public void Add(T item)
-    {
-        var index = IndexFor(item, out _);
-        memory.Insert(index, item);
-    }
-
-    /// <summary>
-    ///     Gets an element of <see cref="SortedList{T}" /> at specified index.
-    /// </summary>
-    /// <param name="i">Index.</param>
+    public void Add(T item) => memory.Insert(IndexFor(item, out _), item);
     public T this[int i] => memory[i];
-
-    /// <summary>
-    /// Removes all elements from <see cref="SortedList{T}" />.
-    /// </summary>
-    public void Clear()
-        => memory.Clear();
-
-    /// <summary>
-    /// Indicates whether a <see cref="SortedList{T}" /> contains a certain element.
-    /// </summary>
+    public void Clear() => memory.Clear();
     /// <param name="item">An element to search.</param>
     /// <returns>true - <see cref="SortedList{T}" /> contains an element, otherwise - false.</returns>
     public bool Contains(T item)
