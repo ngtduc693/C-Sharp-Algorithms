@@ -15,88 +15,43 @@ namespace DataStructures.BinarySearchTree;
 /// <typeparam name="TKey">Type of key for the BST. Keys must implement IComparable.</typeparam>
 public class BinarySearchTree<TKey>
 {
-    /// <summary>
-    ///     Comparer to use when comparing node elements/keys.
-    /// </summary>
+    // Comparer to use when comparing node elements/keys.
     private readonly Comparer<TKey> comparer;
 
-    /// <summary>
-    ///     Gets the root of the BST.
-    /// </summary>
+    // Gets the root of the BST.
     public BinarySearchTreeNode<TKey>? Root { get; private set; }
 
-    public BinarySearchTree()
-    {
-        Root = null;
-        Count = 0;
-        comparer = Comparer<TKey>.Default;
-    }
+    public BinarySearchTree() => (Root, Count, comparer) = (null, 0, Comparer<TKey>.Default);
 
-    public BinarySearchTree(Comparer<TKey> customComparer)
-    {
-        Root = null;
-        Count = 0;
-        comparer = customComparer;
-    }
+    public BinarySearchTree(Comparer<TKey> customComparer) => (Root, Count, comparer) = (null, 0, customComparer);
 
-    /// <summary>
-    ///     Gets the number nodes currently in the BST.
-    /// </summary>
+    // Gets the number nodes currently in the BST.
     public int Count { get; private set; }
 
-    /// <summary>
-    ///     Insert a key into the BST.
-    /// </summary>
-    /// <param name="key">The key to insert.</param>
-    /// <exception cref="ArgumentException">
-    ///     Thrown if key is already in BST.
-    /// </exception>
+    // Insert a key into the BST.
     public void Add(TKey key)
     {
         if (Root is null)
-        {
             Root = new BinarySearchTreeNode<TKey>(key);
-        }
         else
-        {
             Add(Root, key);
-        }
-
         Count++;
     }
 
-    /// <summary>
-    ///     Insert multiple keys into the BST.
-    ///     Keys are inserted in the order they appear in the sequence.
-    /// </summary>
-    /// <param name="keys">Sequence of keys to insert.</param>
+    // Insert multiple keys into the BST.
     public void AddRange(IEnumerable<TKey> keys)
     {
         foreach (var key in keys)
-        {
             Add(key);
-        }
     }
 
-    /// <summary>
-    ///     Find a node with the specified key.
-    /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>The node with the specified key if it exists, otherwise a default value is returned.</returns>
+    // Find a node with the specified key.
     public BinarySearchTreeNode<TKey>? Search(TKey key) => Search(Root, key);
 
-    /// <summary>
-    ///     Checks if the specified key is in the BST.
-    /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>true if the key is in the BST, false otherwise.</returns>
+    // Checks if the specified key is in the BST.
     public bool Contains(TKey key) => Search(Root, key) is not null;
 
-    /// <summary>
-    ///     Removes a node with a key that matches <paramref name="key" />.
-    /// </summary>
-    /// <param name="key">The key to search for.</param>
-    /// <returns>true if the removal was successful, false otherwise.</returns>
+    // Removes a node with a key that matches key.
     public bool Remove(TKey key)
     {
         if (Root is null)

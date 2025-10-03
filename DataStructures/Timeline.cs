@@ -12,7 +12,6 @@
             330: Constantine move the capital to Constantinople.
 */
 
-using System.Collections;
 
 namespace DataStructures;
 
@@ -23,83 +22,39 @@ namespace DataStructures;
 /// <typeparam name="TValue">Value associated with a <see cref="DateTime" />.</typeparam>
 public class Timeline<TValue> : ICollection<(DateTime Time, TValue Value)>, IEquatable<Timeline<TValue>>
 {
-    /// <summary>
-    ///     Inner collection storing the timeline events as key-tuples.
-    /// </summary>
-    private readonly List<(DateTime Time, TValue Value)> timeline = new();
+    // Inner collection storing the timeline events as key-tuples.
+    private List<(DateTime Time, TValue Value)> timeline = [];
 
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="Timeline{TValue}"/> class.
-    /// </summary>
-    public Timeline()
-    {
-    }
+    // Default constructor
+    public Timeline() { }
 
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="Timeline{TValue}"/> class populated with an initial event.
-    /// </summary>
-    /// <param name="time">The time at which the given event occurred.</param>
-    /// <param name="value">The event's content.</param>
-    public Timeline(DateTime time, TValue value)
-        => timeline = new List<(DateTime, TValue)>
-        {
-            (time, value),
-        };
+    // Constructor with initial event
+    public Timeline(DateTime time, TValue value) => timeline = [(time, value)];
 
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="Timeline{TValue}"/> class containing the provided events
-    ///     ordered chronologically.
-    /// </summary>
-    /// <param name="timeline">The timeline to represent.</param>
-    public Timeline(params (DateTime, TValue)[] timeline)
-        => this.timeline = timeline
-            .OrderBy(pair => pair.Item1)
-            .ToList();
+    // Constructor with provided events, ordered chronologically
+    public Timeline(params (DateTime, TValue)[] timeline) => this.timeline = timeline.OrderBy(pair => pair.Item1).ToList();
 
-    /// <summary>
-    /// Gets he number of unique times within this timeline.
-    /// </summary>
-    public int TimesCount
-        => GetAllTimes().Length;
+    // Gets the number of unique times within this timeline.
+    public int TimesCount => GetAllTimes().Length;
 
-    /// <summary>
-    ///     Gets all events that has occurred in this timeline.
-    /// </summary>
-    public int ValuesCount
-        => GetAllValues().Length;
+    // Gets all events that has occurred in this timeline.
+    public int ValuesCount => GetAllValues().Length;
 
-    /// <summary>
-    ///     Get all values associated with <paramref name="time" />.
-    /// </summary>
-    /// <param name="time">Time to get values for.</param>
-    /// <returns>Values associated with <paramref name="time" />.</returns>
+    // Get or set all values associated with a time
     public TValue[] this[DateTime time]
     {
         get => GetValuesByTime(time);
         set
         {
-            var overridenEvents = timeline.Where(@event => @event.Time == time).ToList();
-            foreach (var @event in overridenEvents)
-            {
-                timeline.Remove(@event);
-            }
-
+            timeline.RemoveAll(@event => @event.Time == time);
             foreach (var v in value)
-            {
                 Add(time, v);
-            }
         }
     }
 
-    /// <inheritdoc />
-    bool ICollection<(DateTime Time, TValue Value)>.IsReadOnly
-        => false;
+    bool ICollection<(DateTime Time, TValue Value)>.IsReadOnly => false;
 
-    /// <summary>
-    ///     Gets the count of pairs.
-    /// </summary>
-    public int Count
-        => timeline.Count;
+    public int Count => timeline.Count;
 
     /// <summary>
     ///     Clear the timeline, removing all events.

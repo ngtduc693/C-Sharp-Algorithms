@@ -10,62 +10,36 @@ namespace Algorithms.Other;
 /// </summary>
 public static class Luhn
 {
-    /// <summary>
-    ///     Checking the validity of a sequence of numbers.
-    /// </summary>
-    /// <param name="number">The number that will be checked for validity.</param>
-    /// <returns>
-    ///     True: Number is valid.
-    ///     False: Number isn`t valid.
-    /// </returns>
+    // Checking the validity of a sequence of numbers.
     public static bool Validate(string number) => GetSum(number) % 10 == 0;
 
-    /// <summary>
-    ///     This algorithm finds one missing digit.
-    ///     In place of the unknown digit, put "x".
-    /// </summary>
-    /// <param name="number">The number in which to find the missing digit.</param>
-    /// <returns>Missing digit.</returns>
+    // Finds one missing digit. In place of the unknown digit, put "x".
     public static int GetLostNum(string number)
     {
-        var missingDigitIndex = number.Length - 1 - number.LastIndexOf("x", StringComparison.CurrentCultureIgnoreCase);
-        var checkDigit = GetSum(number.Replace("x", "0", StringComparison.CurrentCultureIgnoreCase)) * 9 % 10;
+        var missingDigitIndex = number.Length - 1 - number.LastIndexOf('x');
+        var checkDigit = GetSum(number.Replace("x", "0")) * 9 % 10;
 
-        // Case 1: If the index of the missing digit is even.
-        if (missingDigitIndex % 2 == 0)
-        {
-            return checkDigit;
-        }
-
-        var candidateDigit = checkDigit / 2;
-
-        // Case 2: if the index of the missing digit is odd and the candidate is valid.
-        // Case 3: if the index of the missing digit is odd and we need the alternative.
-        return Validate(number.Replace("x", candidateDigit.ToString())) ? candidateDigit : (checkDigit + 9) / 2;
+        return missingDigitIndex % 2 == 0
+            ? checkDigit
+            : Validate(number.Replace("x", (checkDigit / 2).ToString()))
+                ? checkDigit / 2
+                : (checkDigit + 9) / 2;
     }
 
-    /// <summary>
-    ///     Computes the sum found by the Luhn algorithm.
-    /// </summary>
-    /// <param name="number">The number for which the sum will be calculated.</param>
-    /// <returns>Sum.</returns>
+    // Computes the sum found by the Luhn algorithm, optimized with Span.
     private static int GetSum(string number)
     {
         var sum = 0;
-        for (var i = 0; i < number.Length; i++)
+        var span = number.AsSpan();
+        for (var i = 0; i < span.Length; i++)
         {
-            var digit = number[i] - '0';
-            digit = (i + number.Length) % 2 == 0
-                ? 2 * digit
-                : digit;
-            if (digit > 9)
-            {
-                digit -= 9;
-            }
-
+            var c = span[i];
+            if (c is < '0' or > '9') continue;
+            var digit = c - '0';
+            digit = (i + span.Length) % 2 == 0 ? 2 * digit : digit;
+            if (digit > 9) digit -= 9;
             sum += digit;
         }
-
         return sum;
     }
 }
