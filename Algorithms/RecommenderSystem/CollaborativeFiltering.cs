@@ -1,80 +1,103 @@
-namespace Algorithms.RecommenderSystem
+namespace Algorithms.RecommenderSystem;
+
+public class CollaborativeFiltering(ISimilarityCalculator similarityCalculator)
 {
-    public class CollaborativeFiltering(ISimilarityCalculator similarityCalculator)
+    private readonly ISimilarityCalculator similarityCalculator =
+        similarityCalculator ?? throw new ArgumentNullException(nameof(similarityCalculator));
+
+    /// <summary>
+    /// Compute Pearson correlation between two users' rating vectors.
+    /// This method is pure (no reliance on similarityCalculator) and is kept public
+    /// so it can be unit-tested independently from PredictRating.
+    /// </summary>
+    /// <remarks>
+    /// - When there are no common items, return 0.
+    /// - When either variance is 0 (denominator ~ 0), return 0 to avoid division by zero.
+    /// </remarks>
+    public double CalculateSimilarity(
+        Dictionary<string, double> user1Ratings,
+        Dictionary<string, double> user2Ratings)
     {
-        private readonly ISimilarityCalculator similarityCalculator = similarityCalculator;
-
-        /// <summary>
-        /// Method to calculate similarity between two users using Pearson correlation.
-        /// </summary>
-        /// <param name="user1Ratings">Rating of User 1.</param>
-        /// <param name="user2Ratings">Rating of User 2.</param>
-        /// <returns>double value to reflect the index of similarity between two users.</returns>
-        public double CalculateSimilarity(Dictionary<string, double> user1Ratings, Dictionary<string, double> user2Ratings)
+        var commonItems = user1Ratings.Keys.Intersect(user2Ratings.Keys).ToList();
+        if (commonItems.Count == 0)
         {
-            var commonItems = user1Ratings.Keys.Intersect(user2Ratings.Keys).ToList();
-            if (commonItems.Count == 0)
-            {
-                return 0;
-            }
-
-            var user1Scores = commonItems.Select(item => user1Ratings[item]).ToArray();
-            var user2Scores = commonItems.Select(item => user2Ratings[item]).ToArray();
-
-            var avgUser1 = user1Scores.Average();
-            var avgUser2 = user2Scores.Average();
-
-            double numerator = 0;
-            double sumSquare1 = 0;
-            double sumSquare2 = 0;
-            double epsilon = 1e-10;
-
-            for (var i = 0; i < commonItems.Count; i++)
-            {
-                var diff1 = user1Scores[i] - avgUser1;
-                var diff2 = user2Scores[i] - avgUser2;
-
-                numerator += diff1 * diff2;
-                sumSquare1 += diff1 * diff1;
-                sumSquare2 += diff2 * diff2;
-            }
-
-            var denominator = Math.Sqrt(sumSquare1 * sumSquare2);
-            return Math.Abs(denominator) < epsilon ? 0 : numerator / denominator;
+            return 0d;
         }
 
-        /// <summary>
-        /// Predict a rating for a specific item by a target user.
-        /// </summary>
-        /// <param name="targetItem">The item for which the rating needs to be predicted.</param>
-        /// <param name="targetUser">The user for whom the rating is being predicted.</param>
-        /// <param name="ratings">
-        /// A dictionary containing user ratings where:
-        /// - The key is the user's identifier (string).
-        /// - The value is another dictionary where the key is the item identifier (string), and the value is the rating given by the user (double).
-        /// </param>
-        /// <returns>The predicted rating for the target item by the target user.
-        /// If there is insufficient data to predict a rating, the method returns 0.
-        /// </returns>
-        public double PredictRating(string targetItem, string targetUser, Dictionary<string, Dictionary<string, double>> ratings)
-        {
-            var targetUserRatings = ratings[targetUser];
-            double totalSimilarity = 0;
-            double weightedSum = 0;
-            double epsilon = 1e-10;
+        var u1 = commonItems.Select(i => user1Ratings[i]).ToArray();
+        var u2 = commonItems.Select(i => user2Ratings[i]).ToArray();
 
-            foreach (var otherUser in ratings.Keys.Where(u => u != targetUser))
+        var avg1 = u1.Average();
+        var avg2 = u2.Average();
+
+        double num = 0d, sumSq1 = 0d, sumSq2 = 0d;
+
+        for (int i = 0; i < commonItems.Count; i++)
+        {
+            var d1 = u1[i] - avg1;
+            var d2 = u2[i] - avg2;
+            num += d1 * d2;
+            sumSq1 += d1 * d1;
+            sumSq2 += d2 * d2;
+        }
+
+        var denom = Math.Sqrt(sumSq1 * sumSq2);
+
+        // Using a tiny threshold to avoid numerical issues when denom is ~0.
+        return denom <= 1e-10 ? 0d : num / denom;
+    }
+
+    /// <summary>
+    /// Predict a rating for a specific item by a target user using
+    /// a standard user-based CF formula:
+    ///     predicted = sum(sim(u, v) * rating_v_item) / sum(|sim(u, v)|)
+    ///
+    /// Notes:
+    /// - Only neighbors who have rated the target item are considered.
+    /// - Denominator uses absolute similarity (common in CF literature) to avoid
+    ///   cancellation from positive/negative neighbors, while the numerator keeps the sign.
+    /// - If no neighbors or the denominator is ~0, return 0 (insufficient signal).
+    /// </summary>
+    public double PredictRating(
+        string targetItem,
+        string targetUser,
+        Dictionary<string, Dictionary<string, double>> ratings)
+    {
+        // Guard: target user must exist
+        if (!ratings.TryGetValue(targetUser, out var targetUserRatings))
+        {
+            return 0d;
+        }
+
+        double totalAbsSim = 0d;
+        double weightedSum = 0d;
+
+        foreach (var (otherUser, otherUserRatings) in ratings)
+        {
+            if (otherUser == targetUser)
             {
-                var otherUserRatings = ratings[otherUser];
-                if (otherUserRatings.ContainsKey(targetItem))
-                {
-                    var similarity = similarityCalculator.CalculateSimilarity(targetUserRatings, otherUserRatings);
-                    totalSimilarity += Math.Abs(similarity);
-                    weightedSum += similarity * otherUserRatings[targetItem];
-                }
+                continue;
             }
 
-            return Math.Abs(totalSimilarity) < epsilon ? 0 : weightedSum / totalSimilarity;
+            // Skip neighbors who haven't rated the target item
+            if (!otherUserRatings.TryGetValue(targetItem, out var neighborRating))
+            {
+                continue;
+            }
+
+            // Critical: use the injected similarity strategy (mockable in tests)
+            var sim = similarityCalculator.CalculateSimilarity(targetUserRatings, otherUserRatings);
+
+            // Skip zero-similarity neighbors entirely
+            if (sim == 0d)
+            {
+                continue;
+            }
+
+            totalAbsSim += Math.Abs(sim);
+            weightedSum += sim * neighborRating;
         }
+
+        return totalAbsSim <= 1e-10 ? 0d : weightedSum / totalAbsSim;
     }
 }
